@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: subscriptionService
+  datasource:
+    url: ${DB_CONNECTION} #jdbc:mysql://localhost:3306/subscriptions?createDatabaseIfNotExist=true
+    driverClassName: com.mysql.cj.jdbc.Driver
+    username: root
+    password: secure_pass
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect    
+    hibernate:
+      ddl-auto: update
+      #ddl-auto: none
+      show-sql: true
+  cache:
+    jcache:
+      config: classpath:ehcache.xml
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS} #localhost:9093,localhost:9094,localhost:9095
+    producer:
+      topic-name: adidas-challenge-topic      
+     
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${RESOURCE_SERVER} #http://localhost:8090/auth/realms/adidas-challenge-realm
+         
+ 
+  
+server:
+  port: 8082
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_SERVER} #http://localhost:8084/eureka
+
+springdoc:
+  swagger-ui:
+    path: /api/swagger-ui.html
+     

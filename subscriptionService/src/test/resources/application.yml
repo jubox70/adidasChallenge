@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: subscriptionService
+  #profiles:
+  #  active: test-profile
+  datasource:
+    url: jdbc:mysql://localhost:3306/subscriptions_test?createDatabaseIfNotExist=true
+    driverClassName: com.mysql.cj.jdbc.Driver
+    username: root
+    password: secure_pass
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect  
+    hibernate:
+      ddl-auto: create-drop
+      #ddl-auto: none
+      show-sql: true
+  cache:
+    type: "none"
+    
+  kafka:
+    bootstrap-servers: localhost:9093,localhost:9094,localhost:9095
+    producer:
+      topic-name: adidas-challenge-topic
+      
+#server:
+#  port: 8082
+
+autoconfigure:
+  exclude:
+    
+
+eureka:
+  client:
+    enabled: false

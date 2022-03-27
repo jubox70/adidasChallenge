@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: gatewayService
+  
+#server:
+#  port: 8080
+
+eureka:
+  client:
+    enabled: false

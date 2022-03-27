@@ -1,0 +1,40 @@
+pipeline {
+    agent any
+
+    environment {
+		imagename = "jubox70/subscription-service"
+		registryCredential = 'yenigul-dockerhub'
+		dockerImage = ''
+	}
+
+    stages {
+        stage('Prepare') {
+			steps {                
+				sh "docker run --name mysql -p 3306:3306 -e MYSQL_USER=adi_code -e MYSQL_PASSWORD=adi_code -d mysql:8"    
+            }
+		}		
+		stage('Build') {
+            steps {
+                git 'https://github.com/jubox70/adidasChallenge.git'
+				
+				dir("subscriptionService") {
+					sh 'mvn package'
+                }  
+            }
+            post {
+                success {
+                    
+                }
+				error {
+					sh "docker stop mysql"
+					error "Build Failed"
+				}
+            }
+        }
+		stage('Upload docker imagen') {
+			steps {                
+				sh "uploadImageSubscriptionService.sh"    
+            }
+		}
+    }
+}

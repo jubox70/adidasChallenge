@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: kafkaConsumerService
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS} #localhost:9093,localhost:9094,localhost:9095
+    consumer:
+      topic-name: adidas-challenge-topic
+  #It doesnt work, only for information purpose    
+  #mail:
+  #  host: smtp.adidas.com
+  #  username: adidasChallenge@adidas.com
+  #  password: secret
+  #  port: 25
+  #  properties:
+  #    mail:
+  #      smtp:
+  #        auth: true
+  #        starttls:
+  #          enable: true
+  #  protocol: smtp
+  #  test-connection: false
+  
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${RESOURCE_SERVER} #http://localhost:8090/auth/realms/adidas-challenge-realm
+         
+  
+server:
+  port: 8081
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_SERVER} #http://localhost:8084/eureka
+
+     

@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: gatewayService
+    
+  cloud:
+    gateway:
+      default-filters:
+        - TokenRelay
+      routes:
+        - id: subscriptions
+          uri: ${SUBSCRIPTION_SERVICE_CONNECTION} #http://localhost:8082
+          predicates:
+            - Path=/subscriptions/**
+          filters:
+            - RemoveRequestHeader=Cookie
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1000
+                redis-rate-limiter.burstCapacity: 500
+                redis-rate-limiter.requestedTokens: 1
+                
+        - id: subscription_api
+          uri: ${SUBSCRIPTION_SERVICE_CONNECTION} #http://localhost:8082
+          predicates:
+            - Path=/api/**, /open-api/**, /swagger-ui/**, /v3/api-docs/**   
+            
+        - id: auth
+          uri: ${AUTH} #http://localhost:8090
+          predicates:
+            - Path=/auth/**           
+                
+    
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${RESOURCE_SERVER} #http://localhost:8090/auth/realms/adidas-challenge-realm 
+      client:
+        provider:
+          my-keycloak-provider:
+            issuer-uri: ${RESOURCE_SERVER} #http://localhost:8090/auth/realms/adidas-challenge-realm
+            # Individual properties can also be provided this way
+            # token-uri: http://localhost:8090/auth/realms/adidas-challenge-realm/protocol/openid-connect/token
+            # authorization-uri: http://localhost:8090/auth/realms/adidas-challenge-realm/protocol/openid-connect/auth
+            # userinfo-uri: http://localhost:8090/auth/realms/adidas-challenge-realm/protocol/openid-connect/userinfo
+            # user-name-attribute: preferred_username
+        registration:
+          keycloak-spring-gateway-client:
+            provider: my-keycloak-provider
+            client-id: ${CLIENT_ID} #adidas-challenge-client-id
+            client-secret: ${CLIENT_SECRET} #3od9zDeowL9wLAZ3ys2ZJm1AWT9fl3Dx             
+            authorization-grant-type: ${AUTHORIZATION_TYPE} #client_credentials
+            redirect-uri: "{baseUrl}/login/oauth2/code/keycloak"
+  
+server:
+  port: 8080
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_SERVER} #http://localhost:8084/eureka
+
+
+  
+  

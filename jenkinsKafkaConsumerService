@@ -1,0 +1,28 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Build') {
+            steps {
+                git 'https://github.com/jubox70/adidasChallenge.git'
+				
+				dir("kafkaConsumerService") {
+					sh 'mvn package'
+                }  
+            }
+            post {
+                success {
+                    
+                }
+				error {
+					error "Build Failed"
+				}
+            }
+        }
+		stage('Upload docker imagen') {
+			steps {                
+				sh "uploadKafkaConsumerService.sh"    
+            }
+		}
+    }
+}

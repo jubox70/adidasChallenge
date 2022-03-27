@@ -1,0 +1,160 @@
+version: '3'
+
+volumes:
+  mysql_data:
+      driver: local
+
+services:
+  mysql:
+    image: mysql:8
+    ports:
+      - 3306:3306
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: secure_pass
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: adi_code
+      MYSQL_PASSWORD: adi_code
+  keycloak:
+    image: quay.io/keycloak/keycloak:legacy
+    volumes:
+      - ./import_realm:/opt/jboss/keycloak/imports
+    environment:
+      KEYCLOAK_IMPORT: /opt/jboss/keycloak/imports/realm-export.json -Dkeycloak.profile.feature.upload_scripts=enabled 
+      DB_VENDOR: MYSQL
+      DB_ADDR: mysql
+      #DB_PORT: 3306
+      DB_DATABASE: keycloak
+      DB_USER: adi_code
+      DB_PASSWORD: adi_code
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: admin
+        
+    ports:
+      - 8090:8080
+    depends_on:
+      - mysql
+  zookeeper:
+    image: bitnami/zookeeper:3.6.2
+    container_name: zookeeper
+    #ports:
+    #  - '2181:2181'
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    depends_on:
+      - keycloak
+  kafka1:
+    image: bitnami/kafka:2.7.0
+    container_name: kafka1
+    #ports:
+    #  - '9093:9093'
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka1:9092,EXTERNAL://localhost:9093
+      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:=3 
+      - KAFKA_DEFAULT_REPLICATION_FACTOR=3
+    depends_on:
+      - zookeeper
+      
+  kafka2:
+    image: bitnami/kafka:2.7.0
+    container_name: kafka2
+    #ports:
+    #  - '9094:9094'
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9094
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka2:9092,EXTERNAL://localhost:9094
+      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:=3 
+      - KAFKA_DEFAULT_REPLICATION_FACTOR:=3
+    depends_on:
+      - kafka1
+    
+  kafka3:
+    image: bitnami/kafka:2.7.0
+    container_name: kafka3
+    #ports:
+    #  - '9095:9095'
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CLIENT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=CLIENT://:9092,EXTERNAL://:9095
+      - KAFKA_CFG_ADVERTISED_LISTENERS=CLIENT://kafka3:9092,EXTERNAL://localhost:9095
+      - KAFKA_INTER_BROKER_LISTENER_NAME=CLIENT
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:=3 
+      - KAFKA_DEFAULT_REPLICATION_FACTOR:=3
+    depends_on:
+      - kafka2
+      
+  kafdrop:
+    image: obsidiandynamics/kafdrop:latest
+    container_name: kafdrop
+    ports:
+      - 9000:9000
+    environment:
+      - KAFKA_BROKERCONNECT=kafka1:9092,kafka2:9092,kafka3:9092
+    depends_on: 
+      - kafka3
+  
+  discovery-service:
+    image: jubox70/discovery-service:latest
+    container_name: discovery-service
+    ports:
+      - 8084:8084
+    environment:
+      - EUREKA_SERVER=http://discovery-service:8084/eureka
+      - USER_SECURITY=adi-code
+      - PASSWORD_SECURITY=adi-code
+    depends_on: 
+      - kafdrop
+      
+  kafka-consumer-service:
+    image: jubox70/kafka-consumer-service:latest
+    container_name: kafka-consumer-service
+    environment:
+      - KAFKA_SERVERS=kafka1:9092,kafka2:9092,kafka3:9092
+      - EUREKA_SERVER=http://adi-code:adi-code@discovery-service:8084/eureka
+      - RESOURCE_SERVER=http://keycloak:8080/auth/realms/adidas-challenge-realm
+    depends_on: 
+      - discovery-service
+      
+  subscription-service:
+    image: jubox70/subscription-service:latest
+    container_name: subscription-service
+    environment:
+      - KAFKA_SERVERS=kafka1:9092,kafka2:9092,kafka3:9092
+      - DB_CONNECTION=jdbc:mysql://mysql:3306/subscriptions?createDatabaseIfNotExist=true
+      - RESOURCE_SERVER=http://keycloak:8080/auth/realms/adidas-challenge-realm
+      - EUREKA_SERVER=http://adi-code:adi-code@discovery-service:8084/eureka
+    depends_on: 
+      - kafka-consumer-service
+      
+  gateway-service:
+    image: jubox70/gateway-service:latest
+    container_name: gateway-service
+    ports:
+      - 8080:8080
+    environment:
+      - SUBSCRIPTION_SERVICE_CONNECTION=http://subscription-service:8082
+      - AUTH=http://keycloak:8080
+      - RESOURCE_SERVER=http://keycloak:8080/auth/realms/adidas-challenge-realm
+      #- REDIRECT_URI="{baseUrl}/login/oauth2/code/keycloak"
+      - EUREKA_SERVER=http://adi-code:adi-code@discovery-service:8084/eureka
+      - CLIENT_ID=adidas-challenge-client-id
+      - CLIENT_SECRET=3od9zDeowL9wLAZ3ys2ZJm1AWT9fl3Dx
+      - AUTHORIZATION_TYPE=client_credentials
+    depends_on: 
+      - subscription-service
+    restart: always

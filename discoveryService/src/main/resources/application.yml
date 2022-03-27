@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: discoveryService
+
+  security:
+    basic:
+      enable: true
+    user:
+      name: ${USER_SECURITY} #adi-code
+      password: ${PASSWORD_SECURITY} #adi-code
+   
+server:
+  port: 8084
+eureka:
+  client:
+    registerWithEureka: false
+    fetchRegistry: false
+    service-url:
+      defaultZone: ${EUREKA_SERVER} #http://localhost:8084/eureka
+  server:
+    renewalPercentThreshold: 0.40
+  

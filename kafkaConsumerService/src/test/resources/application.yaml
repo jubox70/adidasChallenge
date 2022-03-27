@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: kafkaConsumerService
+  kafka:
+    bootstrap-servers: localhost:9093,localhost:9094,localhost:9095
+    consumer:
+      topic-name: test-adidas-challenge-topic
+      auto-offset-reset: earliest
+      group-id: adidas-challenge-group
+
+  
+server:
+  port: 8081
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8084/eureka
+
+     
